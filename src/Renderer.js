@@ -1,6 +1,7 @@
 import { loadExternalScript } from './adloader.js';
 import * as utils from './utils.js';
 import find from 'core-js-pure/features/array/find.js';
+import { config as pbjs_config} from './config.js';
 const moduleCode = 'outstream';
 
 /**
@@ -39,7 +40,8 @@ export function Renderer(options) {
 
   // use a function, not an arrow, in order to be able to pass "arguments" through
   this.render = function () {
-    if (!isRendererDefinedOnAdUnit(adUnitCode)) {
+    let preferBidderRenderer = pbjs_config.getConfig('preferBidderRenderer') || false;
+    if (!isRendererDefinedOnAdUnit(adUnitCode) || preferBidderRenderer) {
       // we expect to load a renderer url once only so cache the request to load script
       loadExternalScript(url, moduleCode, this.callback);
     } else {

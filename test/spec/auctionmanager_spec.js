@@ -649,6 +649,86 @@ describe('auctionmanager.js', function () {
       adapterManager.makeBidRequests.restore();
     });
 
+    describe('when auction timeout is 4000', function () {
+      before(function () {
+        ajaxStub = sinon.stub(ajaxLib, 'ajaxBuilder').callsFake(mockAjaxBuilder);
+        makeRequestsStub.returns(TEST_BID_REQS);
+      });
+      beforeEach(function () {
+        adUnits = [{
+          code: ADUNIT_CODE,
+          bids: [
+            {bidder: BIDDER_CODE, params: {placementId: 'id'}},
+          ],
+	    renderer: {
+            url: 'renderer_au.js',
+            render: (bid) => bid
+	    }
+        }];
+        adUnitCodes = [ADUNIT_CODE];
+        auction = auctionModule.newAuction({adUnits, adUnitCodes, callback: function() {}, cbTimeout: 4000});
+        createAuctionStub = sinon.stub(auctionModule, 'newAuction');
+        createAuctionStub.returns(auction);
+
+        spec = mockBidder(BIDDER_CODE, bids);
+        registerBidder(spec);
+      });
+
+      afterEach(function () {
+        auctionModule.newAuction.restore();
+      });
+
+      after(function () {
+        ajaxStub.restore();
+      });
+
+      it('installs publisher-defined renderers on bids', function () {
+        let renderer = {
+          url: 'renderer.js',
+          render: (bid) => bid
+        };
+        let bidRequests = [Object.assign({}, TEST_BID_REQS[0])];
+        bidRequests[0].bids[0] = Object.assign({ renderer }, bidRequests[0].bids[0]);
+        makeRequestsStub.returns(bidRequests);
+
+        let bids1 = Object.assign({},
+          bids[0],
+          {
+            bidderCode: BIDDER_CODE,
+            mediaType: 'video-outstream',
+          }
+        );
+        spec.interpretResponse.returns(bids1);
+        auction.callBids();
+        const addedBid = auction.getBidsReceived().pop();
+        assert.equal(addedBid.renderer.url, 'renderer.js');
+      });
+
+      it('outstrem uses adunit renderer when preferBidderRender not set', function () {
+        let renderer = {
+          url: 'renderer_bidder.js',
+          render: (bid) => bid
+        };
+
+        let bidRequests = [Object.assign({}, TEST_BID_REQS[0])];
+        bidRequests[0].bids[0] = Object.assign({ renderer }, bidRequests[0].bids[0]);
+        makeRequestsStub.returns(bidRequests);
+
+        let bids1 = Object.assign({},
+          bids[0],
+          {
+            bidderCode: BIDDER_CODE,
+            mediaType: 'video-outstream',
+          }
+        );
+        spec.interpretResponse.returns(bids1);
+
+        auction.callBids();
+        const addedBid = auction.getBidsReceived().pop();
+        assert.equal(addedBid.renderer.url, 'renderer_au.js');
+      });
+    });
+
     describe('when auction timeout is 3000', function () {
       before(function () {
         ajaxStub = sinon.stub(ajaxLib, 'ajaxBuilder').callsFake(mockAjaxBuilder);
@@ -863,9 +943,68 @@ describe('auctionmanager.js', function () {
         respondToRequest(0);
       });
     });
+
+    describe('outstream renderer', function () {
+      before(function () {
+        ajaxStub = sinon.stub(ajaxLib, 'ajaxBuilder').callsFake(mockAjaxBuilder);
+        makeRequestsStub.returns(TEST_BID_REQS);
+      });
+      beforeEach(function () {
+        adUnits = [{
+          code: ADUNIT_CODE,
+          bids: [
+            {bidder: BIDDER_CODE, params: {placementId: 'id'}},
+          ],
+        }];
+        adUnitCodes = [ADUNIT_CODE];
+        auction = auctionModule.newAuction({adUnits, adUnitCodes, callback: function() {}, cbTimeout: 3000});
+        createAuctionStub = sinon.stub(auctionModule, 'newAuction');
+        createAuctionStub.returns(auction);
+
+        spec = mockBidder(BIDDER_CODE, bids);
+        registerBidder(spec);
+      });
+
+      afterEach(function () {
+        auctionModule.newAuction.restore();
+      });
+
+      after(function () {
+        ajaxStub.restore();
+      });
+
+      /*
+      it('outstrem uses bidder renderer when preferBidderRender set', function () {
+        sinon.stub(config, 'getConfig').withArgs('preferBidderRender').returns(true);
+
+        let renderer = {
+          url: 'renderer_bidder.js',
+          render: (bid) => bid
+        };
+
+        let bidRequests = [Object.assign({}, TEST_BID_REQS[0])];
+        bidRequests[0].bids[0] = Object.assign({ renderer }, bidRequests[0].bids[0]);
+        makeRequestsStub.returns(bidRequests);
+
+        let bids1 = Object.assign({},
+          bids[0],
+          {
+            bidderCode: BIDDER_CODE,
+            mediaType: 'video-outstream',
+          }
+        );
+        spec.interpretResponse.returns(bids1);
+
+        auction.callBids();
+        const addedBid = auction.getBidsReceived().pop();
+        assert.equal(addedBid.renderer.url, 'renderer_bidder.js');
+
+        config.getConfig.restore();
+      }); */
+    });
   });
 
-  describe('addBidResponse', function () {
+  describe('outstream renderer', function () {
     let createAuctionStub;
     let adUnits;
     let adUnitCodes;

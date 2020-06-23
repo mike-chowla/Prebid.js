@@ -512,7 +512,8 @@ function getPreparedBidForAuction({adUnitCode, bid, bidderRequest, auctionId}) {
   const bidReq = bidderRequest.bids && find(bidderRequest.bids, bid => bid.adUnitCode == adUnitCode);
   const adUnitRenderer = bidReq && bidReq.renderer;
 
-  if (adUnitRenderer && adUnitRenderer.url) {
+  let preferBidderRenderer = config.getConfig('preferBidderRenderer') || false;
+  if (adUnitRenderer && adUnitRenderer.url && !(preferBidderRenderer && bidObject.renderer)) {
     bidObject.renderer = Renderer.install({ url: adUnitRenderer.url });
     bidObject.renderer.setRender(adUnitRenderer.render);
   }
